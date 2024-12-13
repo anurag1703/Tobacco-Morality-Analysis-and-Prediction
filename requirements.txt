@@ -1,0 +1,17 @@
+numpy
+pandas
+seaborn
+tensorflow
+joblib
+matplotlib
+plotly
+dvc
+dvc-s3
+dagshub
+pandas-profiling
+statsmodels
+flask
+streamlit
+mlflow
+xgboost
+scipy
