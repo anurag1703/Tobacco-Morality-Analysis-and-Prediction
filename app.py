@@ -1,113 +1,122 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
 import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.metrics import MeanSquaredError
+import joblib
 import os
 
-# Set up the Streamlit app
-st.set_page_config(page_title="Tobacco Mortality Analysis", layout="wide")
-
+# Set Streamlit app configuration
+st.set_page_config(page_title="Tobacco Analysis App", layout="wide")
 
 # Utility functions
 def load_classification_model():
+    """Load the classification model."""
     model_path = "scripts/models/tobacco_mortality_classification_model.pkl"
     if os.path.exists(model_path):
         return joblib.load(model_path)
-    else:
-        st.error("Classification model not found. Please ensure the model file exists.")
-        return None
-
+    st.error("Classification model not found.")
+    return None
 
 def load_lstm_model():
+    """Load the LSTM model for smoking prevalence prediction."""
     model_path = "scripts/models/lstm_smoking_prevalence_model.h5"
-    if os.path.exists(model_path):
-        return tf.keras.models.load_model(model_path)
-    else:
-        st.error("LSTM model not found. Please ensure the model file exists.")
+     # Register the 'mse' loss/metric explicitly
+    custom_objects = {
+        "mse": MeanSquaredError(),
+    }
+    try:
+        return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+    except Exception as e:
+        st.error(f"Error loading LSTM model: {e}")
         return None
 
+def predict_with_lstm(model, age_inputs):
+    """Predict using the LSTM model."""
+    try:
+        input_data = np.array(age_inputs, dtype=float)
+        timesteps = 3  # Number of timesteps used in training
+        num_features = len(age_inputs) // timesteps
+        input_data_reshaped = input_data.reshape((1, timesteps, num_features))
+        prediction = model.predict(input_data_reshaped)
+        return prediction[0][0]  # Scalar prediction
+    except Exception as e:
+        return f"Error during prediction: {e}"
 
 def show_classification_page():
+    """Classification task interface."""
     st.title("Tobacco Mortality Classification")
-    st.subheader("Predict Mortality Risk Categories")
 
-    # Input fields
-    inputs = {
-        "Value_x": st.number_input("Value_x (Normalized Income)", value=0.0, format="%.2f"),
-        "Net Ingredient Cost of Bupropion (Zyban)": st.number_input("Bupropion Cost", value=0.0, format="%.2f"),
-        "Net Ingredient Cost of Varenicline (Champix)": st.number_input("Varenicline Cost", value=0.0, format="%.2f"),
-        "Tobacco Affordability": st.number_input("Tobacco Affordability", value=0.0, format="%.2f"),
-        "Cessation Success Rate": st.number_input("Cessation Success Rate", value=0.0, format="%.2f"),
-        "Smoking Prevalence": st.number_input("Smoking Prevalence", value=0.0, format="%.2f"),
-        "Normalized Income (Value_x)": st.number_input("Normalized Income", value=0.0, format="%.2f"),
-        "Normalized Cost (Value_y)": st.number_input("Normalized Cost", value=0.0, format="%.2f"),
-        "Normalized Bupropion Cost": st.number_input("Normalized Bupropion Cost", value=0.0, format="%.2f"),
+    # Input fields for the classification task
+    st.subheader("Enter the required inputs for classification:")
+    features = {
+        "Value_x": st.number_input("Value_x (Normalized Income)", value=0.0, step=0.1),
+        "Net Ingredient Cost of Bupropion (Zyban)": st.number_input("Net Ingredient Cost of Bupropion", value=0.0, step=0.1),
+        "Net Ingredient Cost of Varenicline (Champix)": st.number_input("Net Ingredient Cost of Varenicline", value=0.0, step=0.1),
+        "Tobacco Affordability": st.number_input("Tobacco Affordability", value=0.0, step=0.1),
+        "Cessation Success Rate": st.number_input("Cessation Success Rate", value=0.0, step=0.1),
+        "Smoking Prevalence": st.number_input("Smoking Prevalence", value=0.0, step=0.1),
+        "Normalized Income (Value_x)": st.number_input("Normalized Income", value=0.0, step=0.1),
+        "Normalized Cost (Value_y)": st.number_input("Normalized Cost", value=0.0, step=0.1),
+        "Normalized Bupropion Cost": st.number_input("Normalized Bupropion Cost", value=0.0, step=0.1),
         
     }
 
-    if st.button("Classify"):
+    # Predict button
+    if st.button("Predict Class"):
         model = load_classification_model()
         if model:
-            input_data = np.array([[inputs[key] for key in inputs]])
-            prediction = model.predict(input_data)
-            st.success(f"Predicted Mortality Risk Category: {int(prediction[0])}")
-
+            input_data = np.array([list(features.values())])
+            try:
+                prediction = model.predict(input_data)
+                st.success(f"Predicted Mortality Class: {int(prediction[0])}")
+            except Exception as e:
+                st.error(f"Error during prediction: {e}")
 
 def show_lstm_page():
-    st.title("Smoking Prevalence Trend Analysis")
-    st.subheader("Analyze Trends Using LSTM Model")
+    """LSTM task interface."""
+    st.title("Smoking Prevalence Prediction with LSTM")
 
-    # Input sequence
-    st.write("Provide past smoking prevalence data:")
+    # Input fields for LSTM task
+    st.subheader("Enter the smoking prevalence data for the last 3 timesteps:")
     age_groups = ["16-24", "25-34", "35-49", "50-59", "60 and Over"]
-    sequence_length = 3
+    timesteps = 3
+    input_data = []
 
-    past_data = {}
-    for group in age_groups:
-        past_data[group] = [
-            st.number_input(f"{group} (Step {i+1})", value=0.0, format="%.2f") for i in range(sequence_length)
-        ]
+    for t in range(1, timesteps + 1):
+        st.write(f"Timestep {t}")
+        for age_group in age_groups:
+            value = st.number_input(f"Age group {age_group} (Timestep {t})", value=0.0, step=0.1)
+            input_data.append(value)
 
+    # Predict button
     if st.button("Predict Smoking Prevalence"):
         model = load_lstm_model()
         if model:
-            # Prepare input data
-            scaler = MinMaxScaler()
-            past_values = np.array([past_data[group] for group in age_groups]).T
-            past_values_scaled = scaler.fit_transform(past_values)
-
-            input_sequence = past_values_scaled.reshape(1, sequence_length, len(age_groups))
-            prediction = model.predict(input_sequence)
-            predicted_value = scaler.inverse_transform(
-                np.concatenate([np.zeros((1, len(age_groups))), prediction], axis=1)
-            )[-1, -1]
-
-            st.success(f"Predicted Smoking Prevalence: {predicted_value:.2f}")
-
+            prediction = predict_with_lstm(model, input_data)
+            st.success(f"Predicted Smoking Prevalence: {prediction}")
 
 def show_eda_page():
+    """EDA Report interface."""
     st.title("Exploratory Data Analysis Report")
-    eda_file_path = "EDA Report/EDA Report.html"
 
-    if os.path.exists(eda_file_path):
-        with open(eda_file_path, "r", encoding="utf-8") as f:
-            eda_content = f.read()
-        st.components.v1.html(eda_content, height=1000, scrolling=True)
+    # Path to the EDA report
+    html_file_path = "EDA Report/EDA Report.html"
+
+    if os.path.exists(html_file_path):
+        with open(html_file_path, "r", encoding="utf-8") as f:
+            report_html = f.read()
+        st.components.v1.html(report_html, height=1000, scrolling=True)
     else:
-        st.error("EDA report not found. Please ensure the file exists.")
+        st.error("EDA report not found.")
 
-
-# Navigation logic
+# Main app logic
 st.sidebar.title("Navigation")
-section = st.sidebar.radio(
-    "Choose Section:", ["Classification", "Smoking Prevalence", "EDA Report"]
-)
+options = st.sidebar.radio("Go to", ["Classification", "LSTM for Smoking Prevalence", "EDA Report"])
 
-if section == "Classification":
+if options == "Classification":
     show_classification_page()
-elif section == "Smoking Prevalence":
+elif options == "LSTM for Smoking Prevalence":
     show_lstm_page()
-elif section == "EDA Report":
+else:
     show_eda_page()
