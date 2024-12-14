@@ -94,4 +94,5 @@ with mlflow.start_run():
     mlflow.keras.log_model(model, "model")
 
     # Save the model locally and with DVC
-    model.save("lstm_smoking_prevalence_model.h5")
+    model.save("lstm_smoking_prevalence_model.h5", include_optimizer=True)
+
