@@ -15,17 +15,16 @@ def load_classification_model():
     model_path = "scripts/models/tobacco_mortality_classification_model.pkl"
     if os.path.exists(model_path):
         return joblib.load(model_path)
-    st.error("Classification model not found.")
-    return None
+    else:
+        st.error("Classification model not found. Ensure the file path is correct and the model exists.")
+        return None
 
 def load_lstm_model():
     """Load the LSTM model for smoking prevalence prediction."""
     model_path = "scripts/models/lstm_smoking_prevalence_model.h5"
-     # Register the 'mse' loss/metric explicitly
-    custom_objects = {
-        "mse": MeanSquaredError(),
-    }
     try:
+        # Explicitly register custom objects if necessary
+        custom_objects = {"mse": MeanSquaredError()}
         return tf.keras.models.load_model(model_path, custom_objects=custom_objects)
     except Exception as e:
         st.error(f"Error loading LSTM model: {e}")
@@ -41,13 +40,13 @@ def predict_with_lstm(model, age_inputs):
         prediction = model.predict(input_data_reshaped)
         return prediction[0][0]  # Scalar prediction
     except Exception as e:
-        return f"Error during prediction: {e}"
+        return f"Error during LSTM prediction: {e}"
 
+# Classification Page
 def show_classification_page():
     """Classification task interface."""
     st.title("Tobacco Mortality Classification")
 
-    # Input fields for the classification task
     st.subheader("Enter the required inputs for classification:")
     features = {
         "Value_x": st.number_input("Value_x (Normalized Income)", value=0.0, step=0.1),
@@ -62,7 +61,6 @@ def show_classification_page():
         
     }
 
-    # Predict button
     if st.button("Predict Class"):
         model = load_classification_model()
         if model:
@@ -71,13 +69,13 @@ def show_classification_page():
                 prediction = model.predict(input_data)
                 st.success(f"Predicted Mortality Class: {int(prediction[0])}")
             except Exception as e:
-                st.error(f"Error during prediction: {e}")
+                st.error(f"Error during classification prediction: {e}")
 
+# LSTM Page
 def show_lstm_page():
     """LSTM task interface."""
     st.title("Smoking Prevalence Prediction with LSTM")
 
-    # Input fields for LSTM task
     st.subheader("Enter the smoking prevalence data for the last 3 timesteps:")
     age_groups = ["16-24", "25-34", "35-49", "50-59", "60 and Over"]
     timesteps = 3
@@ -89,18 +87,17 @@ def show_lstm_page():
             value = st.number_input(f"Age group {age_group} (Timestep {t})", value=0.0, step=0.1)
             input_data.append(value)
 
-    # Predict button
     if st.button("Predict Smoking Prevalence"):
         model = load_lstm_model()
         if model:
             prediction = predict_with_lstm(model, input_data)
             st.success(f"Predicted Smoking Prevalence: {prediction}")
 
+# EDA Page
 def show_eda_page():
     """EDA Report interface."""
     st.title("Exploratory Data Analysis Report")
 
-    # Path to the EDA report
     html_file_path = "EDA Report/EDA Report.html"
 
     if os.path.exists(html_file_path):
@@ -108,9 +105,9 @@ def show_eda_page():
             report_html = f.read()
         st.components.v1.html(report_html, height=1000, scrolling=True)
     else:
-        st.error("EDA report not found.")
+        st.error("EDA report not found. Ensure the file path is correct.")
 
-# Main app logic
+# Main navigation
 st.sidebar.title("Navigation")
 options = st.sidebar.radio("Go to", ["Classification", "LSTM for Smoking Prevalence", "EDA Report"])
 
