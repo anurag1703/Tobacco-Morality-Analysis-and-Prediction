@@ -1,0 +1,5 @@
+outs:
+- md5: ec47817df1887ac6c4b7bf458593b5c2
+  size: 159768
+  hash: md5
+  path: lstm_smoking_prevalence_model.h5
