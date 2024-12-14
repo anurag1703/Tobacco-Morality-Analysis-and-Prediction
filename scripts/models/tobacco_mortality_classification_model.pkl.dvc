@@ -1,0 +1,5 @@
+outs:
+- md5: a7861ff09c3d95db4052b53f08dcd359
+  size: 289117
+  hash: md5
+  path: tobacco_mortality_classification_model.pkl
