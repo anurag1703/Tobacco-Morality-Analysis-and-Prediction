@@ -12,7 +12,7 @@ st.set_page_config(page_title="Tobacco Analysis App", layout="wide")
 # Utility functions
 def load_classification_model():
     """Load the classification model."""
-    model_path = r"scripts\models\tobacco_mortality_classification_model.pkl.dvc"
+    model_path = r"scripts\models\tobacco_mortality_classification_model.pkl"
     if os.path.exists(model_path):
         return joblib.load(model_path)
     else:
@@ -21,7 +21,7 @@ def load_classification_model():
 
 def load_lstm_model():
     """Load the LSTM model for smoking prevalence prediction."""
-    model_path = r"scripts\models\lstm_smoking_prevalence_model.h5.dvc"
+    model_path = r"scripts\models\lstm_smoking_prevalence_model.h5"
     try:
         # Explicitly register custom objects if necessary
         custom_objects = {"mse": MeanSquaredError()}
