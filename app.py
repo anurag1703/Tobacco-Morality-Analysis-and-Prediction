@@ -46,7 +46,7 @@ def predict_with_lstm(model, age_inputs):
 def show_home_page():
     """Home page interface."""
     st.title("Welcome to the Tobacco Analysis App")
-    st.image("pic.jpg", use_column_width=True)
+    st.image("pic.jpg", use_container_width=True)
     st.write("Navigate through the sidebar to explore the app's features:")
     st.markdown("""
         - **Classification**: Predict tobacco-related mortality classes.
